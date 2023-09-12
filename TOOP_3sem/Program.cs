@@ -134,13 +134,13 @@ namespace TOOP_3sem
 
                 fun = function as IDifferentiableFunction;
 
-                for (int i = 0; i < pointsAndF[0].point.Count; i++)
+                for (int i = 0; i <= pointsAndF[0].point.Count; i++)
                     grad.Add(0);
 
                 for (int i = 0; i < pointsAndF.Count; i++)
                 {
                     sign = Math.Sign(function.Value(pointsAndF[i].point) - pointsAndF[i].f);
-                    for (int j = 0; j < pointsAndF[i].point.Count; j++)
+                    for (int j = 0; j <= pointsAndF[i].point.Count; j++)
                         grad[j] += sign * fun.Gradient(pointsAndF[i].point)[j];
                 }
                 return grad;
@@ -155,14 +155,14 @@ namespace TOOP_3sem
     class MinimizerGradient : IOptimizator
     {
         public int MaxIter = 100000;
-        private double lambda = 0.1;
+        private double lambda = 1e-8, eps = 1e-8;
         public IVector Minimize(IFunctional objective, IParametricFunction function, IVector initialParameters, IVector minimumParameters = null, IVector maximumParameters = null)
         {
             var param = new Vector();
             var minparam = new Vector();
             foreach (var p in initialParameters) param.Add(p);
             foreach (var p in initialParameters) minparam.Add(p);
-            var fun = function.Bind(param);
+            //var fun = function.Bind(param);
             
             //var currentmin = objective.Value(fun);
 
@@ -172,19 +172,24 @@ namespace TOOP_3sem
             {
                 obj = objective as IDifferentiableFunctional;
 
+                var f = objective.Value(function.Bind(param));
+
                 for (int i = 0; i < MaxIter; i++)
                 {
                     for (int j = 0; j < param.Count; j++)
-                    {
                         param[j] = minparam[j] - lambda * obj.Gradient(function.Bind(minparam))[j];
-                    }
-                    var f = objective.Value(function.Bind(param));
 
+                    f = objective.Value(function.Bind(param));
+
+                    if (f < eps)
+                        break;
+                    else
+                        for (int j = 0; j < param.Count; j++)
+                            minparam[j] = param[j];
                 }
-                return param;
             }
+            return param;
         }
-
     }
     class MinimizerMonteCarlo : IOptimizator
     {
@@ -217,22 +222,43 @@ namespace TOOP_3sem
     {
         static void Main(string[] args)
         {
-            var optimizer = new MinimizerMonteCarlo();
+            //var optimizer = new MinimizerMonteCarlo();
+            var optimizer = new MinimizerGradient();
             var initial = new Vector();
-            initial.Add(1);
-            initial.Add(1);
+            Console.Write("Пространство: ");
             int n = int.Parse(Console.ReadLine());
-            List<(double x, double y)> points = new();
-            for (int i = 0; i < n; i++)
+
+            Console.Write("Количество точек: ");
+            int m = int.Parse(Console.ReadLine());
+            
+            for (int i = 0; i <= n; i++)
+                initial.Add(1);
+
+            List<(IVector x, double y)> points = new();
+            
+            IVector point;
+
+            for (int i = 0; i < m; i++)
             {
+                point = new Vector();
                 var str = Console.ReadLine().Split();
-                points.Add((double.Parse(str[0]), double.Parse(str[1])));
+                for (int j = 0; j < n; j++)
+                { 
+                    point.Add(double.Parse(str[j]));
+                }
+
+                points.Add((point, double.Parse(str.Last())));
             }
-            var functinal = new MyFunctional() { points = points };
-            var fun = new LineFunction();
+            //var functinal = new MyFunctional() { points = points };
+            var functinal = new MyL1NormDifferentiableFunctional() { pointsAndF = points };
+            
+            //var fun = new LineFunction();
+            var fun = new MyLineNFunction();
 
             var res = optimizer.Minimize(functinal, fun, initial);
-            Console.WriteLine($"a={res[0]},b={res[1]}");
+
+            for (int i = 0; i <=n; i++)
+                Console.WriteLine($"{res[i]} ");
         }
     }
 }
