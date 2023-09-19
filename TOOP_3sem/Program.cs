@@ -155,7 +155,7 @@ namespace TOOP_3sem
     class MinimizerGradient : IOptimizator
     {
         public int MaxIter = 100000;
-        private double lambda = 1e-8, eps = 1e-8;
+        private double lambda = 1, eps = 1e-8;
         public IVector Minimize(IFunctional objective, IParametricFunction function, IVector initialParameters, IVector minimumParameters = null, IVector maximumParameters = null)
         {
             var param = new Vector();
@@ -163,7 +163,7 @@ namespace TOOP_3sem
             foreach (var p in initialParameters) param.Add(p);
             foreach (var p in initialParameters) minparam.Add(p);
             //var fun = function.Bind(param);
-            
+
             //var currentmin = objective.Value(fun);
 
             // засунуть в тру катч
@@ -171,11 +171,12 @@ namespace TOOP_3sem
             if (objective is IDifferentiableFunctional)
             {
                 obj = objective as IDifferentiableFunctional;
+                int i = 0;
 
                 var f = objective.Value(function.Bind(param));
-
-                for (int i = 0; i < MaxIter; i++)
+                for (i = 0; i < MaxIter; i++)
                 {
+
                     for (int j = 0; j < param.Count; j++)
                         param[j] = minparam[j] - lambda * obj.Gradient(function.Bind(minparam))[j];
 
@@ -186,7 +187,10 @@ namespace TOOP_3sem
                     else
                         for (int j = 0; j < param.Count; j++)
                             minparam[j] = param[j];
+                    if (i == MaxIter - 1)
+                        Console.WriteLine("Maxiter! f = " + f.ToString());
                 }
+                Console.WriteLine("Iter = " + i.ToString() + " f = " + f.ToString());
             }
             return param;
         }
