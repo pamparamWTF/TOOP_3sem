@@ -213,7 +213,6 @@ namespace TOOP_3sem
             if (objective is IDifferentiableFunctional)
             {
                 obj = objective as IDifferentiableFunctional;
-                int i = 0;
 
                 var f = objective.Value(function.Bind(param));
                 int i;
