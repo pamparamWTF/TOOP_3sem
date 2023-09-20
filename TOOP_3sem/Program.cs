@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
+using System.Numerics;
+using System.Runtime.Intrinsics;
 
 namespace TOOP_3sem
 {
@@ -90,14 +92,13 @@ namespace TOOP_3sem
 
                 for(int i = 0; i < point.Count; i++)
                     grad.Add(point[i]);
-                grad.Add(1);
+                grad.Add(0);
                 return grad;
             }
         }
         public IFunction Bind(IVector parameters) => new InternalLineFunction() { a = parameters };
 
     }
-
     class MyFunctional : IFunctional
     {
         public List<(double x, double y)> points;
@@ -135,7 +136,7 @@ namespace TOOP_3sem
                 fun = function as IDifferentiableFunction;
 
                 for (int i = 0; i <= pointsAndF[0].point.Count; i++)
-                    grad.Add(0);
+                    grad.Add(1);
 
                 for (int i = 0; i < pointsAndF.Count; i++)
                 {
@@ -155,18 +156,59 @@ namespace TOOP_3sem
     class MinimizerGradient : IOptimizator
     {
         public int MaxIter = 100000;
-        private double lambda = 1, eps = 1e-8;
+        private double lambda = 1e-3, eps = 1e-8;
+        private double MakeSimplefx(double x, IDifferentiableFunctional objective, IParametricFunction function, IVector parameters)
+        {
+            Vector buffer = new();
+            int n = parameters.Count;
+
+            for (int i = 0; i < n; i++)
+            {
+                buffer.Add(parameters[i] - x * objective.Gradient(function.Bind(parameters))[i]);
+            }
+
+            return objective.Value(function.Bind(buffer));
+        }
+        double GoldenSelection(double a, double b, double eps, IDifferentiableFunctional objective, IParametricFunction function, IVector parameters)
+        {
+            const double fi = 1.6180339887;
+            double x1, x2;
+            double y1, y2;
+
+            x1 = b - ((b - a) / fi);
+            x2 = a + ((b - a) / fi);
+
+            y1 = MakeSimplefx(x1, objective, function, parameters);
+            y2 = MakeSimplefx(x2, objective, function, parameters);
+            while (Math.Abs(b - a) > eps)
+            {
+                if (y1 <= y2)
+                {
+                    b = x2;
+                    x2 = x1;
+                    x1 = b - ((b - a) / fi);
+                    y2 = y1;
+                    y1 = MakeSimplefx(x1, objective, function, parameters);
+                }
+                else
+                {
+                    a = x1;
+                    x1 = x2;
+                    x2 = a + ((b - a) / fi);
+                    y1 = y2;
+                    y2 = MakeSimplefx(x2, objective, function, parameters);
+                }
+            }
+
+            return (a + b) / 2;
+        }
         public IVector Minimize(IFunctional objective, IParametricFunction function, IVector initialParameters, IVector minimumParameters = null, IVector maximumParameters = null)
         {
             var param = new Vector();
             var minparam = new Vector();
             foreach (var p in initialParameters) param.Add(p);
             foreach (var p in initialParameters) minparam.Add(p);
-            //var fun = function.Bind(param);
 
-            //var currentmin = objective.Value(fun);
-
-            // засунуть в тру катч
             IDifferentiableFunctional obj;
             if (objective is IDifferentiableFunctional)
             {
@@ -174,8 +216,10 @@ namespace TOOP_3sem
                 int i = 0;
 
                 var f = objective.Value(function.Bind(param));
+                int i;
                 for (i = 0; i < MaxIter; i++)
                 {
+                    lambda = GoldenSelection(0, 2, 1e-14, obj, function, minparam);
 
                     for (int j = 0; j < param.Count; j++)
                         param[j] = minparam[j] - lambda * obj.Gradient(function.Bind(minparam))[j];
@@ -190,7 +234,7 @@ namespace TOOP_3sem
                     if (i == MaxIter - 1)
                         Console.WriteLine("Maxiter! f = " + f.ToString());
                 }
-                Console.WriteLine("Iter = " + i.ToString() + " f = " + f.ToString());
+                Console.WriteLine("Functional = " + f.ToString() + " Iter = " + i.ToString());
             }
             return param;
         }
@@ -208,7 +252,8 @@ namespace TOOP_3sem
             var fun = function.Bind(param);
             var currentmin = objective.Value(fun);
             var rand = new Random(0);
-            for (int i = 0; i < MaxIter; i++)
+            int i;
+            for (i = 0; i < MaxIter; i++)
             {
                 for (int j = 0; j < param.Count; j++) param[j] = rand.NextDouble();
                 var f = objective.Value(function.Bind(param));
