@@ -191,7 +191,7 @@ namespace TOOP_3sem
     }
     class MinimizerGradient : IOptimizator
     {
-        public int MaxIter = 100000;
+        public int MaxIter = 1000;
         private double lambda = 1e-3, eps = 1e-8;
         private double MakeSimplefx(double x, IDifferentiableFunctional objective, IParametricFunction function, IVector parameters)
         {
@@ -254,7 +254,7 @@ namespace TOOP_3sem
                 int i;
                 for (i = 0; i < MaxIter; i++)
                 {
-                    lambda = GoldenSelection(0, 2, 1e-9, obj, function, minparam);
+                    lambda = GoldenSelection(0, 2, eps/100, obj, function, minparam);
 
                     for (int j = 0; j < param.Count; j++)
                         param[j] = minparam[j] - lambda * obj.Gradient(function.Bind(minparam))[j];
@@ -266,8 +266,6 @@ namespace TOOP_3sem
                     else
                         for (int j = 0; j < param.Count; j++)
                             minparam[j] = param[j];
-                    //if (i == MaxIter - 1)
-                    //    Console.WriteLine("Maxiter! f = " + f.ToString());
                 }
                 Console.WriteLine("Gradient: Functional = " + f.ToString() + " Iter = " + i.ToString());
             }
@@ -307,10 +305,8 @@ namespace TOOP_3sem
     {
         static void Main(string[] args)
         {
-            var optimizer = new MinimizerMonteCarlo();
-            //var optimizer = new MinimizerGradient();
             var initial = new Vector();
-            Console.Write("Пространство: ");
+            Console.Write("Пространство/Степень: ");
             int n = int.Parse(Console.ReadLine());
 
             Console.Write("Количество точек: ");
@@ -327,18 +323,23 @@ namespace TOOP_3sem
             {
                 point = new Vector();
                 var str = Console.ReadLine().Split();
-                for (int j = 0; j < n; j++)
+                for (int j = 0; j < 1; j++)
+                //for (int j = 0; j < n; j++)
                 { 
                     point.Add(double.Parse(str[j]));
                 }
 
                 points.Add((point, double.Parse(str.Last())));
             }
-            //var functinal = new MyFunctional() { points = points };
-            var functinal = new MyL1Functional() { pointsAndF = points };
             
-            //var fun = new LineFunction();
-            var fun = new MyLineNFunction();
+            var fun = new MyPolynom();
+            //var fun = new MyLineNFunction();
+
+            var functinal = new MyL1Functional() { pointsAndF = points };
+            //var functinal = new MyL2Functional() { pointsAndF = points };
+
+            //var optimizer = new MinimizerGradient();
+            var optimizer = new MinimizerMonteCarlo();
 
             var res = optimizer.Minimize(functinal, fun, initial);
 
